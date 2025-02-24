@@ -8,6 +8,8 @@
 //! updating `memory.x` ensures a rebuild of the application with the
 //! new memory settings.
 
+// Sourced from [`embassy`](https://github.com/embassy-rs/embassy) examples.
+
 use std::env;
 use std::fs::File;
 use std::io::Write;

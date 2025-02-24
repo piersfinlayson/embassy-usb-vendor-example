@@ -13,6 +13,10 @@
 //! 
 //! See `README.md` for more information.
 
+// Copyright (c) 2025 Piers Finlayson <piers@piers.rocks>
+// 
+// MIT licensed - see https://opensource.org/licenses/MIT
+
 #![no_std]
 #![no_main]
 

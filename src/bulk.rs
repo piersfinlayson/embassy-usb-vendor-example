@@ -1,3 +1,7 @@
+// Copyright (c) 2025 Piers Finlayson <piers@piers.rocks>
+// 
+// MIT licensed - see https://opensource.org/licenses/MIT
+
 #[allow(unused_imports)]
 use defmt::{debug, error, info, trace, warn};
 use embassy_futures::select::{select, select3, Either, Either3};

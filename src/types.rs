@@ -1,3 +1,7 @@
+// Copyright (c) 2025 Piers Finlayson <piers@piers.rocks>
+// 
+// MIT licensed - see https://opensource.org/licenses/MIT
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Direction {
     In,

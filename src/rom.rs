@@ -3,6 +3,11 @@
 /// ROM function table offset for the RP2040
 /// From the datasheet:
 ///   Pointer to a public function lookup table (rom_func_table)
+
+// Copyright (c) 2025 Piers Finlayson <piers@piers.rocks>
+// 
+// MIT licensed - see https://opensource.org/licenses/MIT
+
 const BOOTROM_FUNC_TABLE_OFFSET: u16 = 0x14;
 
 /// ROM lookup table offset for the RP2040
