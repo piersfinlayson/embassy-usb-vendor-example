@@ -1,7 +1,7 @@
 //! This is a complete, although basic, example of a (custom) USB Vendor
-//! Device, developed to be run on the Raspberry Pi Pico.
+//! Device, developed to be run on the Raspberry Pi Pico (RP2040).
 //!
-//! It has a C equivalent, using the Pico SDK, and TinyUSB, and can be foundh
+//! It has a C equivalent, using the Pico SDK, and TinyUSB, and can be found
 //! [here](https://github.com/piersfinlayson/tinyusb-vendor-example)
 //!
 //! With probe.rs installed and configured, and a Debug Probe connected and
@@ -10,6 +10,8 @@
 //! ```bash
 //! cargo run --release
 //! ```
+//! 
+//! See `README.md` for more information.
 
 #![no_std]
 #![no_main]
@@ -302,7 +304,6 @@ fn allocate_endpoints(
 
     // Get the IN endpoint (IN from device to host)
     let ep_in: Endpoint<'static, USB, In> = loop {
-        info!("Allocate an IN endpoint");
         let ep = driver
             .alloc_endpoint_in(EndpointType::Bulk, MAX_EP_PACKET_SIZE, 0)
             .expect("Unable to allocate IN endpoint");

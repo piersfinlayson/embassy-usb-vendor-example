@@ -1,5 +1,55 @@
 # embassy-usb-vendor-example
 
+This project provides a working example of implementing a USB vendor class device using the Rust [`Embassy`](https://github.com/embassy-rs/embassy) project on a Raspberry Pi Pico. It was created as the basis for a required custom USB device implementation to experiment with embassy-rs, and is a complete, thorough, well commented, implementation which aims to be idiomatic and follow `Embassy` best practices.
+
+it is likely that there are bugs, and that the author has deviated on occassion from the desired best practices and/or idiomatic Rust.  Please so feel free to submit issues/pull requests if you have any feedback to provide.
+
+Hopefully this example is useful to others - creating it helped me learn a lot about using `Embassy`.
+
+This implementation aims to be as identical as feasible with [`tinyusb-vendor-example`](https://github.com/piersfinlayson/tinyusb-vendor-example), implementing the same vendor and product IDs, compatible descriptor and control and bulk transfer implementations.
+
+Where there are differences these are due to
+* fundmental incompatibilities (one can't expose GCC version information when GCC wasn't used to compile the Rust code!)
+* what are believed to be non-material differences between the USB stacks
+* improvements in error and edge case handling.
+
+## Quick Start
+
+If you already have Rust, probe-rs, the RP2040 target (thumbv6m-none-eabi) and the various required build tools installed, all you need to do to build, flash and run this firmware is: 
+
+```bash
+git clone https://github.com/piersfinlayson/embassy-usb-vendor-example
+cd embassy-usb-vendor-example
+cargo run
+```
+
+You should see startup logs and then the following logs every ~5s:
+
+```
+...
+Main loop
+Bulk loop
+...
+```
+
+These indicate that the primary runners are indeed running and waiting to do some work.
+
+To test the example, use the scripts from [`tinyusb-vendor-example`](https://github.com/piersfinlayson/tinyusb-vendor-example):
+
+```bash
+git clone https://github.com/piersfinlayson/tinyusb-vendor-example
+cd tinyusb-vendor-example/scripts
+sudo ./install-udev-rules.sh  # To provide non-root USB device access
+./pico-info.sh      # Returns some debug info via USB
+./pico-init.sh      # Initializes protocol handling
+./pico-shutdown.sh  # Uninitializes protocol handling
+./pico-init.sh      # Re-initializes protocol handling
+./pico-reset.sh     # Resets protocol handling
+./pico-write.sh     # Issues a WRITE command, and "WRITE"s some data
+./pico-read.sh      # Issues a READ command, and "READ"s some data
+./pico-bootsel.sh   # Reboots the device into BOOTSEL (DFU) mode
+``` 
+
 ## Pre-requisites
 
 ### Build Tools
@@ -40,25 +90,29 @@ Assuming you have Rust already installed
 rustup target add thumbv6m-none-eabi
 ```
 
-## Build and Flashing this Example
+## Build and Flash this Example
 
-These commands should clone this project, build it, and flash it to the Pico you have attached to your debug probe:
+These commands clone this project, build it, and flash it to the Pico you have attached to your debug probe:
 
 ```bash
 git clone https://github.com/piersfinlayson/embassy-usb-vendor-example
 cd embassy-usb-vendor-example
-cargo run --release
+cargo run
 ```
 
-Once the image has been flashed to your device, your computer should detect a new USB device with vendor ID/product iD 0x1209/0x0f0f.  Run ```dmesg```:
+Once the image has been flashed to your device, your host will detect a new USB device with vendor ID/product iD 0x1209/0x0f0f.  Run ```dmesg```:
 
 ```
-
+usb 1-1: New USB device found, idVendor=1209, idProduct=0f0f, bcdDevice= 0.10
+usb 1-1: New USB device strings: Mfr=1, Product=2, SerialNumber=3
+usb 1-1: Product: embassy-rs Vendor Example
+usb 1-1: Manufacturer: piers.rocks
+usb 1-1: SerialNumber: 000
 ```
 
 ## Debugging
 
-embassy-rs applications expect to be debugged by 
+embassy-rs applications expect to be debugged by Debug Probe.  See [Setting up a Pico Probe](#setting-up-a-pico-probe)
 
 ## Setting up a Pico Probe
 
@@ -89,12 +143,12 @@ picotool reset
 ```dmesg``` should give output like this:
 
 ```
-[149353.432365] usb 1-2: New USB device found, idVendor=2e8a, idProduct=000c, bcdDevice= 2.21
-[149353.432374] usb 1-2: New USB device strings: Mfr=1, Product=2, SerialNumber=3
-[149353.432377] usb 1-2: Product: Debugprobe on Pico (CMSIS-DAP)
-[149353.432380] usb 1-2: Manufacturer: Raspberry Pi
-[149353.432382] usb 1-2: SerialNumber: E660581122334455
-[149353.445045] cdc_acm 1-2:1.1: ttyACM1: USB ACM device
+usb 1-2: New USB device found, idVendor=2e8a, idProduct=000c, bcdDevice= 2.21
+usb 1-2: New USB device strings: Mfr=1, Product=2, SerialNumber=3
+usb 1-2: Product: Debugprobe on Pico (CMSIS-DAP)
+usb 1-2: Manufacturer: Raspberry Pi
+usb 1-2: SerialNumber: E660581122334455
+cdc_acm 1-2:1.1: ttyACM1: USB ACM device
 ```
 
 ```probe-rs list``` should give output like this:
