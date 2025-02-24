@@ -1,5 +1,6 @@
-use embassy_time::Duration;
+/// Constants for the embassy-rs Vendor Example.
 
+use embassy_time::Duration;
 
 // How often we aim to log from our primary loops to prove they are still
 // alive.
