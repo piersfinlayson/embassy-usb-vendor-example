@@ -156,9 +156,19 @@ async fn main(spawner: Spawner) -> ! {
     // 0xEF, with is a miscellaneous device.
     config.composite_with_iads = false;
 
+    // Allocate the endpoints.  We do this before we move driver into the
+    // builder, as we need to assign specific endpoints numbers.
+    // If we didn't need to assign specific numbers, we could do this after
+    // we create the InterfaceAltBuilder using alt_setting() below.
+    //
+    // ```rust
+    // let ep_out = alt.endpoint_bulk_in(config.max_packet_size);
+    // let ep_in = alt.endpoint_bulk_out(config.max_packet_size);
+    // ``
     let (ep_in, ep_out) = allocate_endpoints(&mut driver);
 
-    // Create a USB builder
+    // Create a USB builder giving it out Static descriptors and control
+    // buffer.
     let mut builder = Builder::new(
         driver,
         config,
@@ -174,7 +184,8 @@ async fn main(spawner: Spawner) -> ! {
     let if_num = interface.interface_number();
     let mut alt = interface.alt_setting(USB_CLASS, USB_SUB_CLASS, USB_PROTOCOL, None);
 
-    // Set the endpoints to those we created above.
+    // Set the endpoints to those we created above using the
+    // InterfaceAltBuilder
     alt.endpoint_descriptor(
         &ep_in.info(),
         SynchronizationType::NoSynchronization,
@@ -188,28 +199,29 @@ async fn main(spawner: Spawner) -> ! {
         &[],
     );
 
-    // Drop func, to allow us to use the builder again.
+    // Drop func, to allow us to use the builder again.  Otherwise builder is
+    // already borrowed mutably by func.
     drop(func);
 
-    // Create a handler for USB events.  We'll make it static to avoid
-    // lifetime issues.
+    // Create a handler for USB events and set it using builder.  We make it
+    // static to avoid lifetime issues.
     let handler = Control::new(if_num);
     let handler = CONTROL.init(handler);
-
-    // Set the handler.
     builder.handler(handler);
 
-    // Build the builder.
+    // Build the UsbDevice and store it as a Static so we can spawn a task
+    // with it.
     let usb = builder.build();
     let usb = USB_DEVICE.init(usb);
 
-    // Now create a Bulk object, which will listen  for data on the OUT
-    // endpoint and feed the watchdog.  We only feed it from Bulk::run()
-    // because usb.run() is not cancel safe.
+    // Create a Bulk object, which will listen for data on the OUT endpoint
+    // and feed the watchdog.  We only feed it from Bulk::run(), and not
+    // usb.run() because usb.run() is not cancel safe.
     let bulk = Bulk::new(ep_out, ep_in);
     let bulk = BULK.init(bulk);
 
-    // Spawn a task to handle all USB activity
+    // Spawn a task to handle all USB related activity.  If we were doing
+    // other activities, we could also spawn them.
     match spawner.spawn(usb_task(usb, bulk)) {
         Ok(_) => (),
         Err(e) => {
@@ -221,27 +233,36 @@ async fn main(spawner: Spawner) -> ! {
                     .trigger_reset()
             });
 
-            // Failed to reset.  Try differently.
+            // Failed to reset.  Try again, differently.
             cortex_m::peripheral::SCB::sys_reset();
         }
     }
 
-    // Log every so often
+    // Log every so often and avoid letting main() return.
     loop {
         info!("Main loop");
         Timer::after(LOOP_LOG_INTERVAL).await;
     }
 }
 
+// Our USB task.  This is the primary task that runs USB functionality.  It
+// runs the USB stack, and the Bulk handler (which in turn runs the
+// ProtocolHandler, and feeds the watchdog).
+//
+// This function never returns, so the device runs forever.
 #[embassy_executor::task]
 async fn usb_task(
     usb: &'static mut UsbDevice<'static, RpUsbDriver<'static, USB>>,
     bulk: &'static mut Bulk,
 ) -> ! {
+    // Run a select on the USB stack and the Bulk handler.  If either of
+    // these futures return, we want to know about it.  (If we used join,
+    // we would only know when both returned.)
     let either = select(usb.run(), bulk.run()).await;
 
     // If we got here one of our futures returned.  This is very bad news,
-    // so we reboot the device.
+    // as some work is not going to get done, so we reboot the device, just
+    // in case our watchdog strategy didn't work.
     match either {
         Either::First(_) => error!("USB future returned"),
         Either::Second(_) => error!("Bulk future returned"),
@@ -254,15 +275,32 @@ async fn usb_task(
             .trigger_reset()
     });
 
-    // Failed to reset.  Try differently.
+    // Failed to reset.  Try again, differently.
     cortex_m::peripheral::SCB::sys_reset();
 }
 
+// Used to allocate specific endpoint numbers.  We do this to maintain
+// backwards compatibility with the C version of this example (and another
+// device which was the basis for the protocol support herein).  This example
+// is designed to work with an existing host immplementation, and relies on
+// endpoints numbers being as used here.
+//
+// If you change important USB descriptor information, like interfaces and
+// endpoints numbers, but the OS has cached the device information (based on
+// vendor ID and product ID), it can be a pain to recover from. To do so, on 
+// Windows, uninstall the device from Device Manager, on linux run:
+// ```sudo udevadm control --reload-rules && sudo udevadm trigger```
 fn allocate_endpoints(
     driver: &mut RpUsbDriver<'static, USB>,
 ) -> (Endpoint<'static, USB, In>, Endpoint<'static, USB, Out>) {
-    // Allocate endpoints with specific numbers (IN: 0x83, OUT: 0x04)
-    // We must do this before we move driver into Builder below.
+    // Loop through allocating the endpoint numbers until we get the ones we
+    // want.  The Pi supports endpoints numbers 0-15 (0x00-0x0F) and will
+    // assign them sequentially.  (The RP2040 chip only supports a total of
+    // 16 endpoints in hardware, hence the restriction.)  Note that the IN
+    // endpoint is ORed with 0x80, so we have to test for 0x80 | num to get
+    // the right number.
+
+    // Get the IN endpoint (IN from device to host)
     let ep_in: Endpoint<'static, USB, In> = loop {
         info!("Allocate an IN endpoint");
         let ep = driver
@@ -276,6 +314,7 @@ fn allocate_endpoints(
         panic!("Unable to allocate 0x03 as OUT endpoint");
     }
 
+    // Do the same for the OUT endpoint (OUT from host to device)
     let ep_out: Endpoint<'static, USB, Out> = loop {
         let ep = driver
             .alloc_endpoint_out(EndpointType::Bulk, MAX_EP_PACKET_SIZE, 0)
@@ -288,5 +327,6 @@ fn allocate_endpoints(
         panic!("Unable to allocate 0x04 as OUT endpoint");
     }
 
+    // Return them
     (ep_in, ep_out)
 }
