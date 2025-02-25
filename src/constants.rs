@@ -66,7 +66,6 @@ pub const MAX_WRITE_SIZE: u16 = 32768;
 pub const MAX_WRITE_SIZE_USIZE: usize = MAX_WRITE_SIZE as usize;
 
 /// Maximum size of a Read command
-#[allow(dead_code)]
 pub const MAX_READ_SIZE: u16 = 32768;
 #[allow(dead_code)]
 pub const MAX_READ_SIZE_USIZE: usize = MAX_READ_SIZE as usize;
