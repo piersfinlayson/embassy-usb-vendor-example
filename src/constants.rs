@@ -1,9 +1,8 @@
-/// Constants for the embassy-rs Vendor Example.
+//! This module contains constants for the embassy-rs Vendor Example.
 
 // Copyright (c) 2025 Piers Finlayson <piers@piers.rocks>
-// 
+//
 // MIT licensed - see https://opensource.org/licenses/MIT
-
 use embassy_time::Duration;
 
 // How often we aim to log from our primary loops to prove they are still
@@ -44,7 +43,7 @@ pub const OUT_EP: u8 = 0x04;
 pub const IN_EP: u8 = 0x83;
 
 /// USB Descriptor information - Vendor ID and Product ID
-pub const VENDOR_ID: u16 = 0x1209;  // Not officially assigned
+pub const VENDOR_ID: u16 = 0x1209; // Not officially assigned
 pub const PRODUCT_ID: u16 = 0x0f0f; // Not officially assigned
 
 /// USB Descriptor information - manufacturer string

@@ -1,15 +1,23 @@
+//! This module handles USB Bulk transfers on the OUT endpoint (i.e.
+//! received by the device), and scheules the Protocol Handler to handle
+//! data in both directions.
+
 // Copyright (c) 2025 Piers Finlayson <piers@piers.rocks>
-// 
+//
 // MIT licensed - see https://opensource.org/licenses/MIT
 
 #[allow(unused_imports)]
 use defmt::{debug, error, info, trace, warn};
+
 use embassy_futures::select::{select, select3, Either, Either3};
 use embassy_rp::peripherals::USB;
 use embassy_rp::usb::{Endpoint, In, Out};
 use embassy_time::{Instant, Timer};
 use embassy_usb::driver::{Endpoint as DriverEndpoint, EndpointOut};
-use crate::constants::{LOOP_LOG_INTERVAL, MAX_EP_PACKET_SIZE, MAX_WRITE_SIZE_USIZE, WATCHDOG_FEED_TIMER};
+
+use crate::constants::{
+    LOOP_LOG_INTERVAL, MAX_EP_PACKET_SIZE, MAX_WRITE_SIZE_USIZE, WATCHDOG_FEED_TIMER,
+};
 use crate::protocol::ProtocolHandler;
 use crate::WATCHDOG;
 
@@ -103,7 +111,10 @@ impl Bulk {
                         if size <= MAX_WRITE_SIZE_USIZE {
                             self.protocol.received_data(&data, size as u16).await;
                         } else {
-                            info!("Received more data than we can handle {} bytes - dropping", size);
+                            info!(
+                                "Received more data than we can handle {} bytes - dropping",
+                                size
+                            );
                         }
 
                         // Try to read more data

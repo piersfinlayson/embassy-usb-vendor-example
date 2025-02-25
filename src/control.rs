@@ -1,15 +1,20 @@
+//! This module implements the USB Control handler.
+
 // Copyright (c) 2025 Piers Finlayson <piers@piers.rocks>
-// 
+//
 // MIT licensed - see https://opensource.org/licenses/MIT
 
 #[allow(unused_imports)]
-use defmt::{debug, error, info, trace, warn};use embassy_usb::control::{InResponse, OutResponse, Recipient, Request, RequestType};
+use defmt::{debug, error, info, trace, warn};
+
+use embassy_usb::control::{InResponse, OutResponse, Recipient, Request, RequestType};
 use embassy_usb::types::InterfaceNumber;
 use embassy_usb::Handler;
-use crate::PROTOCOL_ACTION;
-use crate::types::Direction;
-use crate::rom::ROM;
+
 use crate::protocol::ProtocolAction;
+use crate::rom::ROM;
+use crate::types::Direction;
+use crate::PROTOCOL_ACTION;
 
 /// Handle USB events.
 pub struct Control {

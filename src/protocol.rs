@@ -1,5 +1,9 @@
+//! This module implements the Protocol handler, which decoodes and actions
+//! Bulk transfers on the OUT endpoint, and returns any requested data on the
+//! IN endpoint.
+
 // Copyright (c) 2025 Piers Finlayson <piers@piers.rocks>
-// 
+//
 // MIT licensed - see https://opensource.org/licenses/MIT
 
 #[allow(unused_imports)]
@@ -7,11 +11,13 @@ use defmt::{debug, error, info, trace, warn};
 
 use embassy_rp::peripherals::USB;
 use embassy_rp::usb::{Endpoint, In};
-use embassy_usb::driver::EndpointIn;
 use embassy_time::Timer;
+use embassy_usb::driver::EndpointIn;
 use heapless::Vec;
 
-use crate::constants::{MAX_EP_PACKET_SIZE, MAX_READ_SIZE, MAX_WRITE_SIZE, MAX_WRITE_SIZE_USIZE, PROTOCOL_HANDLER_TIMER};
+use crate::constants::{
+    MAX_EP_PACKET_SIZE, MAX_READ_SIZE, MAX_WRITE_SIZE, MAX_WRITE_SIZE_USIZE, PROTOCOL_HANDLER_TIMER,
+};
 use crate::PROTOCOL_ACTION;
 
 // ProtocolState is used by ProtocolHandler to store its state.
@@ -67,7 +73,7 @@ enum Transfer {
 
 // A Write operation.  This is created when a WRITE command is received via
 // the bulk OUT endpoint, used to manage the reception of the data to be
-// written, and create the Status to be returned after data reception. 
+// written, and create the Status to be returned after data reception.
 struct Write {
     // Number of bytes of data we are expecting the host to write to us,
     // (and we will not process any other protocol commands until that comes
@@ -97,7 +103,10 @@ impl Write {
                 data: Vec::new(),
             })
         } else {
-            info!("Received WRITE command for too many bytes: {}", expected_len);
+            info!(
+                "Received WRITE command for too many bytes: {}",
+                expected_len
+            );
             Err(Status {
                 code: StatusCode::Error,
                 value: expected_len as u16,
@@ -147,7 +156,7 @@ struct Read {
 
     // Buffer used to send the next set of packets out of the IN endpoint.
     // This buffer is MAX_EP_PACKET_SIZE (64) so the maximum amount of data
-    // can be sent in a single chunk. 
+    // can be sent in a single chunk.
     buffer: [u8; MAX_EP_PACKET_SIZE as usize],
 }
 
@@ -224,14 +233,14 @@ impl ProtocolHandler {
     /// This is a runner that checkes periodically if there's an action to
     /// perform.  It never returns - it is intended that it runs
     /// continuously once the device has been started.  
-    /// 
+    ///
     /// This action may either be an action stored in PROTOCOL_ACTION,
     /// or data which the host has requested to be read from us, which needs
     /// to be served.
     ///
     /// PROTOCOL_ACTIONs are set by the Control object in response to the
     /// appropriate incoming host Control request.
-    /// 
+    ///
     /// Data which has been requested by the host has been setup using a
     /// Transfer::Read type, and was initialized using `received_data()`.
     pub async fn run(&mut self) -> ! {
@@ -264,7 +273,7 @@ impl ProtocolHandler {
 
         // If there is one, perform it.
         match action {
-            // We can initialize the ProtocolHandler when it's in any state. 
+            // We can initialize the ProtocolHandler when it's in any state.
             Some(ProtocolAction::Initialize) => self.initialize(),
 
             // We can unintialize the ProtocolHandler when it's in any state.
@@ -292,7 +301,7 @@ impl ProtocolHandler {
         if let Some(Transfer::Read(read)) = self.transfer.as_mut() {
             // Get some data to send.
             let data = read.send_data();
-            // If there is no data to send, this is not an error 
+            // If there is no data to send, this is not an error
             // condition - in a future implementation when data is
             // actually sourced from somewhere useful, we may not
             // have managed to source the data since we last sent
@@ -378,7 +387,7 @@ impl ProtocolHandler {
     }
 
     // Handles a new command, by creating the appropriate transfer and, in
-    // the case of a WRITE command, sending a 
+    // the case of a WRITE command, sending a
     async fn handle_new_command(&mut self, data: &[u8], len: u16) {
         // Parse the command and get a new Command object.  We handle errors
         // by dropping the request.
@@ -392,7 +401,7 @@ impl ProtocolHandler {
 
         match command.command {
             // Create a new Write transfer.  If the creationf fails, we will
-            // attempt to send a status response. 
+            // attempt to send a status response.
             CommandType::Write => {
                 info!("Host to WRITE {} bytes", command.len);
                 match Write::new(command.len) {
@@ -400,13 +409,12 @@ impl ProtocolHandler {
                     Err(status) => match self.write_ep.write(&status.to_bytes()).await {
                         Ok(_) => info!("Failed to handle WRITE - sent error response"),
                         Err(_) => info!("Failed to send WRITE error response"),
-                    }
-
+                    },
                 }
             }
             // Create a new Read transfer.  If the creation fails, we silently
             // drop the request, as Read commands do no support a status
-            // response. 
+            // response.
             CommandType::Read => {
                 info!("Host to READ {} bytes", command.len);
                 match Read::new(command.len) {
@@ -419,8 +427,11 @@ impl ProtocolHandler {
 
     // Handles receipt of a chunk of data from the host for a WRITE transfer.
     // This function demands that self.transfer is of type Transfer::Write.
-    async fn handle_write_data(&mut self, data: &[u8], len: u16) { 
-        let transfer = self.transfer.as_mut().expect("Internal error - expected WRITE transfer");
+    async fn handle_write_data(&mut self, data: &[u8], len: u16) {
+        let transfer = self
+            .transfer
+            .as_mut()
+            .expect("Internal error - expected WRITE transfer");
         let write = match transfer {
             Transfer::Write(write) => write,
             _ => unreachable!(),
@@ -475,12 +486,12 @@ impl ProtocolHandler {
 
 // The type of Command received from the host.
 pub enum CommandType {
-    // The host is requesting data from the device. 
+    // The host is requesting data from the device.
     Read = 0x08,
 
     // The host is sending data to the device.
     Write = 0x09,
-} 
+}
 
 // Implement TryFrom for CommandType so we can parse an imcoming byte into a
 // CommandType.
@@ -504,7 +515,7 @@ pub struct Command {
     // packet.
     command: CommandType,
 
-    // The protocol used by the command.  This is the second byte of the 
+    // The protocol used by the command.  This is the second byte of the
     // command packet.
     _protocol: Protocol,
 
@@ -519,7 +530,7 @@ impl Command {
     const LEN: u16 = 4;
 
     /// Create a new Command object from an incoming data packet.
-    /// 
+    ///
     /// This function checks the data length and contents are valid, and, if
     /// so, return a Command object.
     pub fn new(bytes: &[u8], size: u16) -> Result<Self, ()> {
@@ -583,7 +594,7 @@ impl TryFrom<u8> for Protocol {
 #[derive(Clone, defmt::Format)]
 #[allow(dead_code)]
 pub enum StatusCode {
-    /// The device is busy.  The host may retry later. 
+    /// The device is busy.  The host may retry later.
     Busy = 0x01,
 
     /// The command was successful.
@@ -593,7 +604,7 @@ pub enum StatusCode {
     Error = 0x03,
 }
 
-/// A Status object is used to return a status response to the host after 
+/// A Status object is used to return a status response to the host after
 /// certin commands have been received and handled.  It is returned as
 /// stream of bytes on the IN endpoint.
 pub struct Status {

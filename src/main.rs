@@ -10,26 +10,27 @@
 //! ```bash
 //! cargo run --release
 //! ```
-//! 
+//!
 //! See `README.md` for more information.
 
 // Copyright (c) 2025 Piers Finlayson <piers@piers.rocks>
-// 
+//
 // MIT licensed - see https://opensource.org/licenses/MIT
 
 #![no_std]
 #![no_main]
 
-mod types;
-mod constants;
-mod rom;
-mod control;
 mod bulk;
+mod constants;
+mod control;
 mod protocol;
+mod rom;
+mod types;
 
-use core::cell::RefCell;
 #[allow(unused_imports)]
 use defmt::{debug, error, info, trace, warn};
+
+use core::cell::RefCell;
 use embassy_executor::Spawner;
 use embassy_futures::select::{select, Either};
 use embassy_rp::pac;
@@ -44,12 +45,14 @@ use embassy_usb::{Builder, Config, UsbDevice};
 use static_cell::{ConstStaticCell, StaticCell};
 use {defmt_rtt as _, panic_probe as _};
 
-use constants::{
-    IN_EP, LOOP_LOG_INTERVAL, MANUFACTURER, MAX_EP_PACKET_SIZE, MAX_PACKET_SIZE_0, OUT_EP, PRODUCT, PRODUCT_ID, SERIAL, USB_CLASS, USB_POWER_MA, USB_PROTOCOL, USB_SUB_CLASS, VENDOR_ID, WATCHDOG_TIMER
-};
-use protocol::ProtocolAction;
 use bulk::Bulk;
+use constants::{
+    IN_EP, LOOP_LOG_INTERVAL, MANUFACTURER, MAX_EP_PACKET_SIZE, MAX_PACKET_SIZE_0, OUT_EP, PRODUCT,
+    PRODUCT_ID, SERIAL, USB_CLASS, USB_POWER_MA, USB_PROTOCOL, USB_SUB_CLASS, VENDOR_ID,
+    WATCHDOG_TIMER,
+};
 use control::Control;
+use protocol::ProtocolAction;
 
 //
 // Statics
@@ -64,7 +67,7 @@ use control::Control;
 //
 // TODO - As we have multiple tasks running concurrently, we should probably
 // implement a wrapper in order to ensure that one running runner (and other
-// failed runners) don't keep the device alive. 
+// failed runners) don't keep the device alive.
 static WATCHDOG: Mutex<CriticalSectionRawMutex, RefCell<Option<Watchdog>>> =
     Mutex::new(RefCell::new(None));
 
@@ -74,7 +77,7 @@ static WATCHDOG: Mutex<CriticalSectionRawMutex, RefCell<Option<Watchdog>>> =
 // as enabled, reset, address, configured, etc.
 static CONTROL: StaticCell<Control> = StaticCell::new();
 
-// The BULK static contains our Bulk data handling object, which  a 
+// The BULK static contains our Bulk data handling object, which  a
 // Protocol Handler object.
 //
 // The Bulk object consists of a runner that listens for data on the OUT
@@ -293,7 +296,7 @@ async fn usb_task(
 //
 // If you change important USB descriptor information, like interfaces and
 // endpoints numbers, but the OS has cached the device information (based on
-// vendor ID and product ID), it can be a pain to recover from. To do so, on 
+// vendor ID and product ID), it can be a pain to recover from. To do so, on
 // Windows, uninstall the device from Device Manager, on linux run:
 // ```sudo udevadm control --reload-rules && sudo udevadm trigger```
 fn allocate_endpoints(
@@ -332,6 +335,6 @@ fn allocate_endpoints(
         panic!("Unable to allocate 0x04 as OUT endpoint");
     }
 
-    // Return them
+    // Return the endpoints.
     (ep_in, ep_out)
 }
