@@ -66,6 +66,7 @@ impl defmt::Format for ProtocolAction {
 // transfer and is triggerd by a Bulk command from the Host on the OUT
 // endoint.  Writes also take take on the OUT endpoint (as they are host to
 // device).  Reads are sent on the IN endpoint (as they are device to host).
+#[allow(clippy::large_enum_variant)]
 enum Transfer {
     Read(Read),
     Write(Write),
@@ -109,7 +110,7 @@ impl Write {
             );
             Err(Status {
                 code: StatusCode::Error,
-                value: expected_len as u16,
+                value: expected_len,
             })
         }
     }
@@ -134,7 +135,7 @@ impl Write {
         if self.received_bytes >= self.expected_len {
             Some(Status {
                 code: StatusCode::Ok,
-                value: self.received_bytes as u16,
+                value: self.received_bytes,
             })
         } else {
             None
@@ -186,7 +187,7 @@ impl Read {
             return &[];
         }
 
-        let to_send = remaining.min(MAX_EP_PACKET_SIZE as u16);
+        let to_send = remaining.min(MAX_EP_PACKET_SIZE);
         self.sent_bytes += to_send;
         &self.buffer[..(to_send as usize)]
     }
@@ -340,6 +341,7 @@ impl ProtocolHandler {
     ///   * Byte 1 is the protocol (0x10 only supported)
     ///   * Bytes 2 nd 3 contain the data length (for READ and WRITE
     ///     commands), in little endian format.
+    ///
     ///   Based on the command, a new transfer of the appropriate (R/W) type
     ///   is created.
     ///  

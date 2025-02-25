@@ -196,13 +196,13 @@ async fn main(spawner: Spawner) -> ! {
     // Set the endpoints to those we created above using the
     // InterfaceAltBuilder
     alt.endpoint_descriptor(
-        &ep_in.info(),
+        ep_in.info(),
         SynchronizationType::NoSynchronization,
         UsageType::DataEndpoint,
         &[],
     );
     alt.endpoint_descriptor(
-        &ep_out.info(),
+        ep_out.info(),
         SynchronizationType::NoSynchronization,
         UsageType::DataEndpoint,
         &[],

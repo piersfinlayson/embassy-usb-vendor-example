@@ -285,7 +285,8 @@ impl ControlRequest {
     }
 }
 
-///
+// Implements try_from to create a ControlRequest from the USB control request
+// byte
 impl TryFrom<u8> for ControlRequest {
     type Error = ();
 
@@ -305,6 +306,7 @@ impl TryFrom<u8> for ControlRequest {
     }
 }
 
+// Implements Format to allow defmt to print the ControlRequest.
 impl defmt::Format for ControlRequest {
     fn format(&self, f: defmt::Formatter) {
         match self {

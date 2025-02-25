@@ -15,6 +15,7 @@ const BOOTROM_FUNC_TABLE_OFFSET: u16 = 0x14;
 const BOOTROM_TABLE_LOOKUP_OFFSET: u16 = 0x18;
 
 /// Object containing exposed ROM functions
+#[allow(clippy::upper_case_acronyms)]
 pub struct ROM {}
 
 /// Public functions
@@ -56,9 +57,7 @@ impl ROM {
         let value = unsafe { *(addr_val as *const u16) };
 
         // Convert value to pointer size then to void pointer
-        let final_ptr = value as usize as *mut core::ffi::c_void;
-
-        final_ptr
+        value as usize as *mut core::ffi::c_void
     }
 
     // Get the pointer for a function, based on the two characters used to
@@ -82,8 +81,6 @@ impl ROM {
         let rom_table_lookup: RomTableLookupFn = core::mem::transmute(lookup_addr);
 
         // Use the looku function to lookup this code
-        let result = rom_table_lookup(func_table, code);
-
-        result
+        rom_table_lookup(func_table, code)
     }
 }
