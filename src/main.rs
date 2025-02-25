@@ -24,7 +24,6 @@ mod bulk;
 mod constants;
 mod control;
 mod protocol;
-mod rom;
 mod types;
 
 #[allow(unused_imports)]

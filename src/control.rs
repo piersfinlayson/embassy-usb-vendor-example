@@ -10,9 +10,9 @@ use defmt::{debug, error, info, trace, warn};
 use embassy_usb::control::{InResponse, OutResponse, Recipient, Request, RequestType};
 use embassy_usb::types::InterfaceNumber;
 use embassy_usb::Handler;
+use rp2040_rom::ROM;
 
 use crate::protocol::ProtocolAction;
-use crate::rom::ROM;
 use crate::types::Direction;
 use crate::PROTOCOL_ACTION;
 
