@@ -115,7 +115,7 @@ bind_interrupts!(struct Irqs {
 });
 
 // Our main function.  This is the entry point for our application and like
-// all embedded implementations, we do not want it to exit as that would mean
+// most embedded implementations, we do not want it to exit as that would mean
 // the device has halted.
 #[embassy_executor::main]
 async fn main(spawner: Spawner) -> ! {
@@ -175,7 +175,7 @@ async fn main(spawner: Spawner) -> ! {
     // ``
     let (ep_in, ep_out) = allocate_endpoints(&mut driver);
 
-    // Create a USB builder giving it out Static descriptors and control
+    // Create a USB builder giving it our Static descriptors and control
     // buffer.
     let mut builder = Builder::new(
         driver,
@@ -186,7 +186,7 @@ async fn main(spawner: Spawner) -> ! {
         CONTROL_BUF.take(),
     );
 
-    // Set up the function and interface for the Bulk class
+    // Set up the function and interface for the Vendor class
     let mut func = builder.function(USB_CLASS, USB_SUB_CLASS, USB_PROTOCOL);
     let mut interface = func.interface();
     let if_num = interface.interface_number();
