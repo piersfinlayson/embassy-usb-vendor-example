@@ -9,10 +9,10 @@
 #[allow(unused_imports)]
 use defmt::{debug, error, info, trace, warn};
 
-use embassy_futures::select::{select, select3, Either, Either3};
+use embassy_futures::select::{select3, Either3};
 use embassy_rp::peripherals::USB;
 use embassy_rp::usb::{Endpoint, In, Out};
-use embassy_time::{Instant, Timer};
+use embassy_time::{Instant, Timer, with_timeout};
 use embassy_usb::driver::{Endpoint as DriverEndpoint, EndpointOut};
 
 use crate::constants::{
@@ -65,12 +65,11 @@ impl Bulk {
             }
 
             // We need to pause from waiting for the endpoint to be enabled
-            // so we can feed the watchdog
-            let either = select(
+            // so we can feed the watchdog.
+            let result = with_timeout(
+                WATCHDOG_FEED_TIMER,
                 self.read_ep.wait_enabled(),
-                Timer::after(WATCHDOG_FEED_TIMER),
-            )
-            .await;
+            ).await;
 
             // Feed the watchdog - whichever result we got.  We do this before
             // we process any endpoint activity, in case that takes a while.
@@ -82,7 +81,7 @@ impl Bulk {
             });
 
             // If the endpoint was enabled, attempt to read in the data.
-            if let Either::First(_) = either {
+            if let Ok(_) = result {
                 info!("OUT Endpoint enabled");
                 loop {
                     let now = Instant::now();
@@ -96,6 +95,14 @@ impl Bulk {
 
                     // Again, we need to pause from waiting for data, so we
                     // can feed the watchdog.
+                    //
+                    // This select is a non-ideal way of handling the the
+                    // read_ep.read().  While read() is cancellable, it will
+                    // lose any data it was in the process of reading.  A better
+                    // approach here would have been to use spawner.spawn() to
+                    // spawn the read() as a separate task, and then use a 
+                    // channel, or some other locking mechanism to pass the
+                    // data to be handled to the ProtocolHandler.
                     let either = select3(
                         self.read_ep.read(&mut data),
                         self.protocol.run(),
@@ -143,6 +150,8 @@ impl Bulk {
                     break;
                 }
                 info!("Finished processing data on OUT Endpoint");
+            } else {
+                // Hit timeout - just go around the loop again.
             }
         }
     }

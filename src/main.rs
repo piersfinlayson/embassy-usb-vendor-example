@@ -36,7 +36,7 @@ use embassy_rp::pac;
 use embassy_rp::usb::{Driver as RpUsbDriver, Endpoint, In, InterruptHandler, Out};
 use embassy_rp::watchdog::Watchdog;
 use embassy_rp::{bind_interrupts, peripherals::USB};
-use embassy_sync::blocking_mutex::{raw::CriticalSectionRawMutex, Mutex};
+use embassy_sync::blocking_mutex::{raw::CriticalSectionRawMutex, raw::ThreadModeRawMutex, Mutex};
 use embassy_time::Timer;
 use embassy_usb::descriptor::{SynchronizationType, UsageType};
 use embassy_usb::driver::{Driver, Endpoint as DriverEndpoint, EndpointType};
@@ -61,8 +61,13 @@ use protocol::ProtocolAction;
 // spawn tasks (accessing these statics), and to split our code into
 // separate modules.
 
+
 // We use the WATCHDOG static to store the Watchdog object, so we can feed it
 // from all of our tasks and objects.
+//
+// CriticalSectionRawMutex is required here, as both cores access WATCHDOG.
+// This will create a critical_section to ensure that the mutex is accessed
+// safely.
 //
 // TODO - As we have multiple tasks running concurrently, we should probably
 // implement a wrapper in order to ensure that one running runner (and other
@@ -97,7 +102,13 @@ static USB_DEVICE: StaticCell<UsbDevice<'static, RpUsbDriver<'static, USB>>> = S
 // between the Control Handler and the Protocol Handler, so the Control
 // Handler can instruct the Protocol Handler to perform actions in response to
 // Control requests from the host.
-static PROTOCOL_ACTION: Mutex<CriticalSectionRawMutex, RefCell<Option<ProtocolAction>>> =
+//
+// ThreadModeRawMutex is used, as this is only accessed by tasks on the same
+// core.  This avoids critical_sections, and is more efficient.
+//
+// An embassy_sync::signal::Signal might be more appropriate here.  it can be
+// use to signal a single instance of an object to another thread.
+static PROTOCOL_ACTION: Mutex<ThreadModeRawMutex, RefCell<Option<ProtocolAction>>> =
     Mutex::new(RefCell::new(None));
 
 // The following statics are used to store the USB descriptor buffers and
@@ -122,13 +133,15 @@ async fn main(spawner: Spawner) -> ! {
     // Get device peripherals.  This gives us access to the hardware - like
     // the USB and Watchdog.
     let p = embassy_rp::init(Default::default());
+    let p_watchdog = p.WATCHDOG;
+    let p_usb = p.USB;
 
     // Get the watchdog
-    let watchdog = pac::WATCHDOG;
+    let pac_watchdog = pac::WATCHDOG;
 
     // Get the last reset reason.  There's supposed to be a reset_reason()
     // function on Watchdog, but calling that doesn't compile;
-    let reason = watchdog.reason().read();
+    let reason = pac_watchdog.reason().read();
     if reason.force() {
         info!("Last reset was forced");
     } else if reason.timer() {
@@ -138,12 +151,12 @@ async fn main(spawner: Spawner) -> ! {
     }
 
     // Set up the watchdog
-    let mut watchdog = Watchdog::new(p.WATCHDOG);
+    let mut watchdog = Watchdog::new(p_watchdog);
     watchdog.start(WATCHDOG_TIMER);
     WATCHDOG.lock(|w| *w.borrow_mut() = Some(watchdog));
 
     // Create a new USB device
-    let mut driver = RpUsbDriver::new(p.USB, Irqs);
+    let mut driver = RpUsbDriver::new(p_usb, Irqs);
 
     // Set up the USB device descriptor
 

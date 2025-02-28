@@ -138,7 +138,7 @@ impl Control {
             }
         };
 
-        // Check we got an In request
+        // Check the request is of the expected direction
         if request.direction() != dir {
             info!(
                 "Ignoring request {} with direction {}",
