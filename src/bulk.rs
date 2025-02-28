@@ -95,14 +95,6 @@ impl Bulk {
 
                     // Again, we need to pause from waiting for data, so we
                     // can feed the watchdog.
-                    //
-                    // This select is a non-ideal way of handling the the
-                    // read_ep.read().  While read() is cancellable, it will
-                    // lose any data it was in the process of reading.  A better
-                    // approach here would have been to use spawner.spawn() to
-                    // spawn the read() as a separate task, and then use a 
-                    // channel, or some other locking mechanism to pass the
-                    // data to be handled to the ProtocolHandler.
                     let either = select3(
                         self.read_ep.read(&mut data),
                         self.protocol.run(),
