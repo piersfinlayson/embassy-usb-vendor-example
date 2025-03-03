@@ -160,6 +160,17 @@ The following debug probes were found:
 
 This means you've successfully set this Pico up as a debug probe.
 
+### Set up udev
+
+You need to set up udev so that your user will have permissions to access the probe:
+
+```bash
+cd /tmp/
+wget https://probe.rs/files/69-probe-rs.rules
+sudo cp /tmp/69-probe-rs.rules /etc/udev/rules.d/
+sudo udevadm control --reload && sudo udevadm trigger
+```
+
 ### Attaching the other Pico to your probe
 
 You need to connect the debug probe Pico to the 3 debug pins on the Pico you want to flash this example onto.  You can find these 3 debug pins at the opposite end of the Pico to the USB connector.  They are labelled DEBUG on the top of the BOARD and SWDIO/GND/SWCLK on the bottom. 
